@@ -30,17 +30,21 @@ GPIO.setup(13, GPIO.OUT) #Buzzer out
 ################################################# 
 glob_CDU_stat = 0
 glob_AGI_stat = 1  #1 Renzoku,  2 Danzoku 
+glob_current_temp = 25
+glob_setting_temp = 25
 
 ################################################# 
-def control_OnOff_by_temp(now, setting, delta:float):
+#def control_OnOff_by_temp(now, setting, delta:float):
+def control_OnOff_by_temp():
     print("compare current and setting temp")
-    if (now >= (setting + 2)):
+    #print("now:{}, set:{}".format(now, setting))
+    if (glob_current_temp >= (glob_setting_temp + 2)):
         print("CDU ON")
         GPIO.output(21, 1)
         glob_CDU_stat = 1
         if (glob_AGI_stat == 0):# AGI Danzoku 
             GPIO.output(16, 1)
-    if (now <= (setting - 2)):
+    elif (glob_current_temp <= (glob_setting_temp - 2)):
         print("CDU OFF")
         glob_CDU_stat = 0
         GPIO.output(21, 0)
@@ -76,7 +80,7 @@ class Screen_One(Screen): # 3rd Screen
 
     def btRenzoku(self):  
         glob_AGI_stat = 0
-        GPIO.output(21, 1) # always AGI ON  
+        GPIO.output(16, 1) # always AGI ON  
 
     def btDanzoku(self):  
         glob_AGI_stat = 0
@@ -168,19 +172,26 @@ class TextWidget(Screen):
 
 
     def btc2(self): #UP  
+        global glob_setting_temp  
         self.set_num = self.set_num + 1
         self.temp_set  = str(self.set_num)
-        GPIO.output(21,1)
+        glob_setting_temp = self.set_num
+        print("#DEBUG set TEMP push Plus:"  , self.set_num) 
+        print("#DEBUG set grobal_setting_temp:"  , glob_setting_temp) 
 
 
     def btc3(self):  
+        global glob_setting_temp  
         self.set_num = self.set_num - 1
         self.temp_set  = str(self.set_num)
-        GPIO.output(21,0)
+        glob_setting_temp = self.set_num
+        print("#DEBUG set TEMP push minus:"  , self.set_num) 
+        print("#DEBUG set grobal_setting_temp:"  , glob_setting_temp) 
 
 class SM02App(App):
     def build(self):
-        Clock.schedule_interval(partial(control_OnOff_by_temp,30,20),2.)
+        #Clock.schedule_interval(partial(control_OnOff_by_temp,25, glob_setting_temp),2.)
+        Clock.schedule_interval(lambda dt: control_OnOff_by_temp(), 5.)
         return Display()
 
 if __name__ == "__main__":
