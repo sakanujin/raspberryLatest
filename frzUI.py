@@ -9,30 +9,51 @@ from kivy.config import Config
 from kivy.properties import BooleanProperty
 from kivy.properties import NumericProperty
 from kivy.clock import Clock
+from functools import partial 
 ################################################# 
+import pt100
 import time
 import RPi.GPIO as GPIO
 ################################################# 
 #Config.set('graphics', 'width', '600')
-#Config.set('graphics', 'width', '800')
-#Config.set('graphics', 'height', '480')
+#Config.set('graphics', 'width', '1016')
+#Config.set('graphics', 'height', '100')
 Window.fullscreen = 'auto'
+#Window.fullscreen = True
 ################################################# 
 #GPIO  Test 
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(21, GPIO.OUT)
+GPIO.setup(21, GPIO.OUT) #CDU  
+GPIO.setup(16, GPIO.OUT) #AGI
+GPIO.setup(12, GPIO.IN) #ERR State
+GPIO.setup(13, GPIO.OUT) #Buzzer out
+################################################# 
+glob_CDU_stat = 0
+glob_AGI_stat = 1  #1 Renzoku,  2 Danzoku 
 
-
-
-
+################################################# 
+def control_OnOff_by_temp(now, setting, delta:float):
+    print("compare current and setting temp")
+    if (now >= (setting + 2)):
+        print("CDU ON")
+        GPIO.output(21, 1)
+        glob_CDU_stat = 1
+        if (glob_AGI_stat == 0):# AGI Danzoku 
+            GPIO.output(16, 1)
+    if (now <= (setting - 2)):
+        print("CDU OFF")
+        glob_CDU_stat = 0
+        GPIO.output(21, 0)
+        if (glob_AGI_stat == 0):# AGI Danzoku 
+            GPIO.output(16, 0)
 ################################################# 
  
 class Display(BoxLayout):
     pass
  
 class Screen_One(Screen): # 3rd Screen
-    renzokku = 1
-    danzok   = 0
+    #renzokku = 1
+    #danzok   = 0
     stMin =   StringProperty()
     valMin =   3
 
@@ -52,6 +73,13 @@ class Screen_One(Screen): # 3rd Screen
 
     def btcSET(self):  
         pass
+
+    def btRenzoku(self):  
+        glob_AGI_stat = 0
+        GPIO.output(21, 1) # always AGI ON  
+
+    def btDanzoku(self):  
+        glob_AGI_stat = 0
 
 class Screen_KitchenTimer(Screen):
     is_countdown = BooleanProperty(False)
@@ -79,7 +107,8 @@ class Screen_KitchenTimer(Screen):
 
     def start_timer(self):
         self.is_countdown = True
-        Clock.schedule_interval(self.on_countdown, 1.0)
+        #Clock.schedule_interval(self.on_countdown, 1.0) sec 
+        Clock.schedule_interval(self.on_countdown, 60.0)  #min
         pass
 
     def stop_timer(self):
@@ -102,7 +131,6 @@ class Screen_Alert(Screen):
     def __init__(self, **kwargs):
         super(Screen_Alert, self).__init__(**kwargs)
 
-
     pass
 
 ################################################
@@ -123,6 +151,7 @@ class TextWidget(Screen):
         self.text3 = 'DOWN'
         self.text4 = 'オフ'
         self.temp_now = str(25)
+        #self.temp_now = str(pt100.pt100GetTmp())
         self.temp_set = self.temp_now
         self.set_num  = int(self.temp_set)
 
@@ -149,12 +178,10 @@ class TextWidget(Screen):
         self.temp_set  = str(self.set_num)
         GPIO.output(21,0)
 
-
 class SM02App(App):
     def build(self):
+        Clock.schedule_interval(partial(control_OnOff_by_temp,30,20),2.)
         return Display()
 
 if __name__ == "__main__":
-
     SM02App().run()
-
