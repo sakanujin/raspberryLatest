@@ -11,53 +11,62 @@ from kivy.properties import NumericProperty
 from kivy.clock import Clock
 from functools import partial 
 ################################################# 
-import pt100
+# if you use the code for Raspberry Pi, turn into True,  if use PC pls put False
+RASPBERRY_CODE = True
+#RASPBERRY_CODE = False
+
+if (RASPBERRY_CODE == True):
+    import pt100
+    import RPi.GPIO as GPIO
+
 import time
-import RPi.GPIO as GPIO
 ################################################# 
-#Config.set('graphics', 'width', '600')
+Config.set('graphics', 'width', '600')
 #Config.set('graphics', 'width', '1016')
-#Config.set('graphics', 'height', '100')
-Window.fullscreen = 'auto'
+Config.set('graphics', 'height', '100')
+#Window.fullscreen = 'auto'
 #Window.fullscreen = True
 ################################################# 
 #GPIO  Test 
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(21, GPIO.OUT) #CDU  
-GPIO.setup(16, GPIO.OUT) #AGI
-GPIO.setup(12, GPIO.IN) #ERR State
-GPIO.setup(13, GPIO.OUT) #Buzzer out
+if (RASPBERRY_CODE == True):
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(21, GPIO.OUT) #CDU  
+    GPIO.setup(16, GPIO.OUT) #AGI
+    GPIO.setup(12, GPIO.IN) #ERR State
+    GPIO.setup(13, GPIO.OUT) #Buzzer out
 ################################################# 
+#GLOBAL variables
 glob_CDU_stat = 0
 glob_AGI_stat = 1  #1 Renzoku,  2 Danzoku 
 glob_current_temp = 25
 glob_setting_temp = 25
+glob_delay        = 3
 
 ################################################# 
 #def control_OnOff_by_temp(now, setting, delta:float):
 def control_OnOff_by_temp():
-    print("compare current and setting temp")
+    print("#DEBUG# On/Off delay time is ", glob_delay)
     #print("now:{}, set:{}".format(now, setting))
     if (glob_current_temp >= (glob_setting_temp + 2)):
-        print("CDU ON")
-        GPIO.output(21, 1)
-        glob_CDU_stat = 1
-        if (glob_AGI_stat == 0):# AGI Danzoku 
-            GPIO.output(16, 1)
+        print("************** CDU ON ************")
+        if(RASPBERRY_CODE == True):
+            GPIO.output(21, 1)
+            glob_CDU_stat = 1
+            if (glob_AGI_stat == 0):# AGI Danzoku 
+                GPIO.output(16, 1)
     elif (glob_current_temp <= (glob_setting_temp - 2)):
-        print("CDU OFF")
-        glob_CDU_stat = 0
-        GPIO.output(21, 0)
-        if (glob_AGI_stat == 0):# AGI Danzoku 
-            GPIO.output(16, 0)
+        print("///////////// CDU OFF ////////////")
+        if(RASPBERRY_CODE == True):
+            glob_CDU_stat = 0
+            GPIO.output(21, 0)
+            if (glob_AGI_stat == 0):# AGI Danzoku 
+                GPIO.output(16, 0)
 ################################################# 
  
 class Display(BoxLayout):
     pass
  
 class Screen_One(Screen): # 3rd Screen
-    #renzokku = 1
-    #danzok   = 0
     stMin =   StringProperty()
     valMin =   3
 
@@ -75,12 +84,16 @@ class Screen_One(Screen): # 3rd Screen
         self.stMin  = str(self.valMin)
         #self.set_num = self.set_num - 1
 
-    def btcSET(self):  
-        pass
+    def btcDelaySet(self):  
+        global glob_delay
+        glob_delay = self.valMin 
+        print("#DEBUG# delay time is set " ,glob_delay)
+        
 
     def btRenzoku(self):  
         glob_AGI_stat = 0
-        GPIO.output(16, 1) # always AGI ON  
+        if(RASPBERRY_CODE == True):
+            GPIO.output(16, 1) # always AGI ON  
 
     def btDanzoku(self):  
         glob_AGI_stat = 0
@@ -154,8 +167,13 @@ class TextWidget(Screen):
         self.text2 = 'UP'
         self.text3 = 'DOWN'
         self.text4 = 'オフ'
-        self.temp_now = str(25)
-        #self.temp_now = str(pt100.pt100GetTmp())
+        #self.temp_now = str(25)
+
+        if (RASPBERRY_CODE == True):
+            self.temp_now = str(pt100.pt100GetTmp())
+        else: 
+            self.temp_now = str(25)
+
         self.temp_set = self.temp_now
         self.set_num  = int(self.temp_set)
 
@@ -191,7 +209,8 @@ class TextWidget(Screen):
 class SM02App(App):
     def build(self):
         #Clock.schedule_interval(partial(control_OnOff_by_temp,25, glob_setting_temp),2.)
-        Clock.schedule_interval(lambda dt: control_OnOff_by_temp(), 5.)
+        #Clock.schedule_interval(lambda dt: control_OnOff_by_temp(), glob_delay)
+        Clock.schedule_interval(lambda dt: control_OnOff_by_temp(), glob_delay*60)
         return Display()
 
 if __name__ == "__main__":
