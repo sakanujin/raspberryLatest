@@ -12,8 +12,9 @@ from kivy.clock import Clock
 from functools import partial 
 ################################################# 
 # if you use the code for Raspberry Pi, turn into True,  if use PC pls put False
-RASPBERRY_CODE = True
-#RASPBERRY_CODE = False
+
+#RASPBERRY_CODE = True
+RASPBERRY_CODE = False
 
 if (RASPBERRY_CODE == True):
     import pt100
@@ -21,10 +22,10 @@ if (RASPBERRY_CODE == True):
 
 import time
 ################################################# 
-Config.set('graphics', 'width', '600')
+#Config.set('graphics', 'width', '600')
 #Config.set('graphics', 'width', '1016')
-Config.set('graphics', 'height', '100')
-#Window.fullscreen = 'auto'
+#Config.set('graphics', 'height', '100')
+Window.fullscreen = 'auto'
 #Window.fullscreen = True
 ################################################# 
 #GPIO  Test 
@@ -32,7 +33,7 @@ if (RASPBERRY_CODE == True):
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(21, GPIO.OUT) #CDU  
     GPIO.setup(16, GPIO.OUT) #AGI
-    GPIO.setup(12, GPIO.IN) #ERR State
+    GPIO.setup(12, GPIO.IN)  #ERR State
     GPIO.setup(13, GPIO.OUT) #Buzzer out
 ################################################# 
 #GLOBAL variables
@@ -49,15 +50,15 @@ def control_OnOff_by_temp():
     #print("now:{}, set:{}".format(now, setting))
     if (glob_current_temp >= (glob_setting_temp + 2)):
         print("************** CDU ON ************")
+        glob_CDU_stat = 1
         if(RASPBERRY_CODE == True):
             GPIO.output(21, 1)
-            glob_CDU_stat = 1
             if (glob_AGI_stat == 0):# AGI Danzoku 
                 GPIO.output(16, 1)
     elif (glob_current_temp <= (glob_setting_temp - 2)):
         print("///////////// CDU OFF ////////////")
+        glob_CDU_stat = 0
         if(RASPBERRY_CODE == True):
-            glob_CDU_stat = 0
             GPIO.output(21, 0)
             if (glob_AGI_stat == 0):# AGI Danzoku 
                 GPIO.output(16, 0)
@@ -182,11 +183,11 @@ class TextWidget(Screen):
         if self.text4 == "オン":
 
             self.text4 = "オフ"
-            print(self.text4)
+            #print(self.text4)
 
         elif self.text4 == "オフ":
             self.text4 = "オン"
-            print(self.text4)
+            #print(self.text4)
 
 
     def btc2(self): #UP  
@@ -208,8 +209,6 @@ class TextWidget(Screen):
 
 class SM02App(App):
     def build(self):
-        #Clock.schedule_interval(partial(control_OnOff_by_temp,25, glob_setting_temp),2.)
-        #Clock.schedule_interval(lambda dt: control_OnOff_by_temp(), glob_delay)
         Clock.schedule_interval(lambda dt: control_OnOff_by_temp(), glob_delay*60)
         return Display()
 
